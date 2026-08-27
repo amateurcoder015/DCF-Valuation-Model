@@ -166,7 +166,7 @@ dcf-valuation-model/
 
 ## 6. Roadmap
 
-- [ ] **Step 1: Core Math Layer** (WACC, FCFF, Terminal Value, Discounting Bridge — pure functions hand-validated against worked textbook examples)
+- [x] **Step 1: Core Math Layer** (WACC, FCFF, Terminal Value, Discounting Bridge — pure functions hand-validated against worked textbook examples)
 - [ ] **Step 2: Data Layer** (Real financial statements & market data pulling via `yfinance` with non-financial sector validation)
 - [ ] **Step 3: DCF Orchestration Engine** (Integration of core math and data layer into unified ticker valuation engine)
 - [ ] **Step 4: Single-Page Streamlit Dashboard** (Interactive user interface with editable inputs, full output breakdown, and visual waterfall chart)
@@ -210,7 +210,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-> **Current Status:** Repository scaffolding and documentation complete. Core logic will land in Step 1.
+> **Current Status:** Step 1 core math functions implemented and validated against test vectors.
 >
 > **Future Execution Commands:**
 > - Run unit tests (Step 1+): `pytest -q`
