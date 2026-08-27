@@ -1,0 +1,24 @@
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments and virtualenvs
+.venv/
+venv/
+ENV/
+env/
+*.env
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Project-specific cache directory
+data/cache/
+
+# IDE and OS metadata
+.DS_Store
+.vscode/
+.idea/
