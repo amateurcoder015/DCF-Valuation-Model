@@ -53,6 +53,11 @@ class CompanyFinancials:
         All monetary figures are converted to the market trading currency (info['currency'])
         if financial statement currency (info['financialCurrency']) differs (e.g. INFY.NS statement in USD, traded in INR).
 
+    Column Alignment:
+        ebit, depreciation_amortization, capex, and change_in_nwc are strictly drawn from the primary
+        most recent fiscal year column (col 0). If interest_expense is NaN in col 0 (e.g. AAPL), it falls back
+        to the most recent non-NaN prior column with interest_expense_fallback_used = True.
+
     Attributes:
         ticker: Ticker symbol string (e.g. 'AAPL').
         company_name: Full company or short name.
@@ -74,6 +79,7 @@ class CompanyFinancials:
         data_retrieved_at: ISO 8601 UTC timestamp of data retrieval.
         tax_rate_fallback_used: True if effective tax rate defaulted due to negative/zero pretax income.
         fx_rate_applied: Exchange rate multiplier used to convert financialCurrency to currency (1.0 if identical).
+        interest_expense_fallback_used: True if interest_expense was drawn from a prior fiscal year due to NaN in col 0.
     """
     ticker: str
     company_name: str
@@ -95,6 +101,7 @@ class CompanyFinancials:
     data_retrieved_at: str
     tax_rate_fallback_used: bool = False
     fx_rate_applied: float = 1.0
+    interest_expense_fallback_used: bool = False
 
 
 def _get_fx_rate(from_curr: str, to_curr: str) -> float:
@@ -132,7 +139,7 @@ def _get_row_value(
     df: pd.DataFrame,
     row_names: list[str],
     col_idx: int = 0,
-    search_all_cols: bool = True
+    search_all_cols: bool = False
 ) -> Optional[float]:
     """Retrieves numeric value from a DataFrame by candidate row names.
 
@@ -141,7 +148,7 @@ def _get_row_value(
     if df is None or df.empty:
         return None
 
-    # First attempt at specified col_idx
+    # Attempt at specified col_idx
     for name in row_names:
         if name in df.index:
             try:
@@ -247,7 +254,7 @@ def fetch_company_financials(
 
     shares = info.get("sharesOutstanding") or info.get("impliedSharesOutstanding")
     if shares is None or pd.isna(shares) or float(shares) <= 0:
-        shares_row = _get_row_value(inc, ["Diluted Average Shares", "Basic Average Shares"])
+        shares_row = _get_row_value(inc, ["Diluted Average Shares", "Basic Average Shares"], col_idx=0, search_all_cols=False)
         if shares_row is not None and shares_row > 0:
             shares_val = shares_row
         else:
@@ -261,17 +268,17 @@ def fetch_company_financials(
     else:
         beta_val = float(beta_raw)
 
-    # Income statement extraction
+    # Primary Income Statement extraction (col_idx=0 strictly)
     if inc is None or inc.empty:
         raise ValueError(f"Income statement missing or empty for ticker '{clean_ticker}'.")
 
-    ebit_raw = _get_row_value(inc, ["EBIT", "Operating Income", "Total Operating Income As Reported"])
+    ebit_raw = _get_row_value(inc, ["EBIT", "Operating Income", "Total Operating Income As Reported"], col_idx=0, search_all_cols=False)
     if ebit_raw is None:
         raise ValueError(f"Required field 'ebit' is missing or NaN for ticker '{clean_ticker}'.")
     ebit_val = ebit_raw * fx_rate
 
-    tax_provision = _get_row_value(inc, ["Tax Provision", "Income Tax Expense"])
-    pretax_income = _get_row_value(inc, ["Pretax Income", "Income Before Tax"])
+    tax_provision = _get_row_value(inc, ["Tax Provision", "Income Tax Expense"], col_idx=0, search_all_cols=False)
+    pretax_income = _get_row_value(inc, ["Pretax Income", "Income Before Tax"], col_idx=0, search_all_cols=False)
 
     tax_rate_fallback_used = False
     if pretax_income is not None and pretax_income > 0 and tax_provision is not None and tax_provision >= 0:
@@ -285,49 +292,63 @@ def fetch_company_financials(
         effective_tax_rate = 0.25
         tax_rate_fallback_used = True
 
-    # Interest Expense extraction (search all columns if col 0 is NaN, raise if completely missing/NaN)
-    interest_exp_raw = _get_row_value(
-        inc,
-        ["Interest Expense", "Interest Expense Non Operating", "Net Non Operating Interest Income Expense"],
-        search_all_cols=True
-    )
-
     # Balance sheet extraction for Debt and Cash
     if bs is None or bs.empty:
         raise ValueError(f"Balance sheet missing or empty for ticker '{clean_ticker}'.")
 
-    total_debt_row = _get_row_value(bs, ["Total Debt", "Long Term Debt And Capital Lease Obligation"], search_all_cols=True)
+    total_debt_row = _get_row_value(bs, ["Total Debt", "Long Term Debt And Capital Lease Obligation"], col_idx=0, search_all_cols=True)
     if total_debt_row is not None:
         total_debt_val = total_debt_row * fx_rate
     else:
         info_debt = info.get("totalDebt")
         total_debt_val = float(info_debt) if info_debt is not None and not pd.isna(info_debt) else 0.0
 
-    if interest_exp_raw is not None:
-        interest_expense_val = abs(interest_exp_raw) * fx_rate
-    elif info.get("interestExpense") is not None and not pd.isna(info.get("interestExpense")):
-        interest_expense_val = abs(float(info.get("interestExpense"))) * fx_rate
-    else:
-        if total_debt_val > 0.0:
-            raise ValueError(f"Required field 'interest_expense' is missing or NaN for ticker '{clean_ticker}'.")
-        else:
-            interest_expense_val = 0.0  # Valid debt-free case
+    # Interest Expense extraction: check primary col_idx=0 first
+    interest_expense_fallback_used = False
+    interest_exp_col0 = _get_row_value(
+        inc,
+        ["Interest Expense", "Interest Expense Non Operating", "Net Non Operating Interest Income Expense"],
+        col_idx=0,
+        search_all_cols=False
+    )
 
-    # Cashflow extraction
+    if interest_exp_col0 is not None:
+        interest_expense_val = abs(interest_exp_col0) * fx_rate
+    else:
+        # Fallback to search remaining columns if col 0 is NaN (e.g. AAPL)
+        interest_exp_prior = _get_row_value(
+            inc,
+            ["Interest Expense", "Interest Expense Non Operating", "Net Non Operating Interest Income Expense"],
+            col_idx=0,
+            search_all_cols=True
+        )
+        if interest_exp_prior is not None:
+            interest_expense_val = abs(interest_exp_prior) * fx_rate
+            interest_expense_fallback_used = True
+        elif info.get("interestExpense") is not None and not pd.isna(info.get("interestExpense")):
+            interest_expense_val = abs(float(info.get("interestExpense"))) * fx_rate
+            interest_expense_fallback_used = True
+        else:
+            if total_debt_val > 0.0:
+                raise ValueError(f"Required field 'interest_expense' is missing or NaN for ticker '{clean_ticker}'.")
+            else:
+                interest_expense_val = 0.0  # Valid debt-free case
+
+    # Primary Cashflow extraction (col_idx=0 strictly)
     if cf is None or cf.empty:
         raise ValueError(f"Cash flow statement missing or empty for ticker '{clean_ticker}'.")
 
-    da_raw = _get_row_value(cf, ["Depreciation And Amortization", "Depreciation Amortization Depletion", "Reconciled Depreciation"])
+    da_raw = _get_row_value(cf, ["Depreciation And Amortization", "Depreciation Amortization Depletion", "Reconciled Depreciation"], col_idx=0, search_all_cols=False)
     if da_raw is None:
         raise ValueError(f"Required field 'depreciation_amortization' is missing or NaN for ticker '{clean_ticker}'.")
     da_val = da_raw * fx_rate
 
-    capex_raw = _get_row_value(cf, ["Capital Expenditure", "Capital Expenditure Reported"])
+    capex_raw = _get_row_value(cf, ["Capital Expenditure", "Capital Expenditure Reported"], col_idx=0, search_all_cols=False)
     if capex_raw is None:
         raise ValueError(f"Required field 'capex' is missing or NaN for ticker '{clean_ticker}'.")
     capex_val = abs(capex_raw) * fx_rate  # Normalize outflow to positive float
 
-    # Balance sheet NWC extraction (most recent two fiscal years)
+    # Balance sheet NWC extraction (most recent two fiscal years: col_idx 0 vs col_idx 1)
     cols = bs.columns
     if len(cols) < 2:
         raise ValueError(f"Insufficient balance sheet history (found {len(cols)} years, need 2) to calculate change in NWC for ticker '{clean_ticker}'.")
@@ -344,7 +365,7 @@ def fetch_company_financials(
     nwc_1 = (ca_1 - cl_1) * fx_rate
     change_in_nwc = nwc_0 - nwc_1
 
-    cash_row = _get_row_value(bs, ["Cash Cash Equivalents And Short Term Investments", "Cash And Cash Equivalents"], search_all_cols=True)
+    cash_row = _get_row_value(bs, ["Cash Cash Equivalents And Short Term Investments", "Cash And Cash Equivalents"], col_idx=0, search_all_cols=True)
     if cash_row is not None:
         cash_val = cash_row * fx_rate
     else:
@@ -374,6 +395,7 @@ def fetch_company_financials(
         data_retrieved_at=now_iso,
         tax_rate_fallback_used=tax_rate_fallback_used,
         fx_rate_applied=fx_rate,
+        interest_expense_fallback_used=interest_expense_fallback_used,
     )
 
 

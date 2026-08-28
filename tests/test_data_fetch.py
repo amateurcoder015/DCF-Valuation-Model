@@ -85,8 +85,9 @@ def test_fetch_company_financials_aapl_fixture(mock_aapl_ticker):
     assert pytest.approx(res.effective_tax_rate, abs=1e-4) == 20719000000 / 132729000000
     assert res.tax_rate_fallback_used is False
 
-    # AAPL Interest Expense searched across available columns (found $3.933B in col 2)
+    # AAPL Interest Expense searched across available columns (found $3.933B in col 2, triggering fallback flag)
     assert pytest.approx(res.interest_expense, abs=1e-2) == 3.933e9
+    assert res.interest_expense_fallback_used is True
 
     # NWC: (147957000000 - 165631000000) - (152987000000 - 176392000000) = 5731000000
     assert pytest.approx(res.change_in_nwc, abs=1e-2) == 5731000000.0
@@ -115,6 +116,9 @@ def test_fetch_company_financials_infy_fixture_scaling(mock_infy_ticker):
     # Raw USD D&A ($5.52e8) * 95.368 = ₹52.64B INR
     expected_da_inr = 5.52e8 * fx_rate
     assert pytest.approx(res.depreciation_amortization, abs=1e-2) == expected_da_inr
+
+    # INFY.NS has interest expense in col 0
+    assert res.interest_expense_fallback_used is False
 
     # Implied Operating Margin check (EBIT / Revenue = 4.553B / 20.158B = 22.58%)
     raw_rev_usd = float(mock_infy_ticker.income_stmt.loc["Total Revenue"].iloc[0])
@@ -190,6 +194,7 @@ def test_live_yfinance_integration():
     assert aapl_res.ebit > 0
     assert aapl_res.capex > 0
     assert aapl_res.interest_expense > 0  # Resolved: interest_expense is non-zero
+    assert aapl_res.interest_expense_fallback_used is True  # Resolved: explicitly flagged prior column fallback for AAPL
     assert aapl_res.current_price > 0
     assert aapl_res.market_cap > 0
 
@@ -201,8 +206,8 @@ def test_live_yfinance_integration():
     infy_res = fetch_company_financials("INFY.NS")
     assert infy_res.ticker == "INFY.NS"
     assert infy_res.currency == "INR"
-    # Correct order of magnitude in INR: EBIT > ₹300B INR (₹30,000 Crore INR)
     assert infy_res.ebit > 3.0e11
+    assert infy_res.interest_expense_fallback_used is False  # INFY.NS has interest expense in col 0
     assert infy_res.market_cap > 1.0e12
 
     # Test historical revenue CAGR live
