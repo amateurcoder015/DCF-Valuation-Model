@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="barGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f43f5e"/>
+      <stop offset="100%" stop-color="#fb7185"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="400" rx="16" fill="url(#bgGrad)"/>
+
+  <!-- Title & Subtitle -->
+  <text x="40" y="45" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="700" fill="#f8fafc">5-Year FCFF Projection Curve</text>
+  <text x="40" y="68" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="400" fill="#94a3b8">Illustrative Forecast: Base FCFF $175.00M at 8.0% Annual CAGR</text>
+
+  <!-- Gridlines -->
+  <g stroke="#334155" stroke-dasharray="4 4" stroke-width="1">
+    <line x1="80" y1="110" x2="740" y2="110"/>
+    <line x1="80" y1="170" x2="740" y2="170"/>
+    <line x1="80" y1="230" x2="740" y2="230"/>
+    <line x1="80" y1="290" x2="740" y2="290"/>
+    <line x1="80" y1="350" x2="740" y2="350"/>
+  </g>
+
+  <!-- Y-Axis Labels -->
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" fill="#64748b" text-anchor="end">
+    <text x="70" y="114">$300M</text>
+    <text x="70" y="174">$225M</text>
+    <text x="70" y="234">$150M</text>
+    <text x="70" y="294">$75M</text>
+    <text x="70" y="354">$0M</text>
+  </g>
+
+  <!-- Bars & Labels -->
+  <!-- Base Year (Yr 0): $175M -> Height = (175/300)*240 = 140px. Y = 350 - 140 = 210 -->
+  <rect x="110" y="210" width="55" height="140" rx="6" fill="url(#barGrad)" filter="url(#shadow)" opacity="0.75"/>
+  <text x="137.5" y="202" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#38bdf8" text-anchor="middle">$175.00M</text>
+  <text x="137.5" y="372" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="500" fill="#94a3b8" text-anchor="middle">Year 0</text>
+
+  <!-- Year 1: $189.00M -> Height = (189/300)*240 = 151.2px. Y = 350 - 151.2 = 198.8 -->
+  <rect x="215" y="198.8" width="55" height="151.2" rx="6" fill="url(#barGrad)" filter="url(#shadow)"/>
+  <text x="242.5" y="190.8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#38bdf8" text-anchor="middle">$189.00M</text>
+  <text x="242.5" y="372" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="500" fill="#94a3b8" text-anchor="middle">Year 1</text>
+
+  <!-- Year 2: $204.12M -> Height = (204.12/300)*240 = 163.3px. Y = 350 - 163.3 = 186.7 -->
+  <rect x="320" y="186.7" width="55" height="163.3" rx="6" fill="url(#barGrad)" filter="url(#shadow)"/>
+  <text x="347.5" y="178.7" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#38bdf8" text-anchor="middle">$204.12M</text>
+  <text x="347.5" y="372" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="500" fill="#94a3b8" text-anchor="middle">Year 2</text>
+
+  <!-- Year 3: $220.45M -> Height = (220.45/300)*240 = 176.36px. Y = 350 - 176.36 = 173.64 -->
+  <rect x="425" y="173.64" width="55" height="176.36" rx="6" fill="url(#barGrad)" filter="url(#shadow)"/>
+  <text x="452.5" y="165.64" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#38bdf8" text-anchor="middle">$220.45M</text>
+  <text x="452.5" y="372" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="500" fill="#94a3b8" text-anchor="middle">Year 3</text>
+
+  <!-- Year 4: $238.09M -> Height = (238.09/300)*240 = 190.47px. Y = 350 - 190.47 = 159.53 -->
+  <rect x="530" y="159.53" width="55" height="190.47" rx="6" fill="url(#barGrad)" filter="url(#shadow)"/>
+  <text x="557.5" y="151.53" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#38bdf8" text-anchor="middle">$238.09M</text>
+  <text x="557.5" y="372" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="500" fill="#94a3b8" text-anchor="middle">Year 4</text>
+
+  <!-- Year 5: $257.13M -> Height = (257.13/300)*240 = 205.7px. Y = 350 - 205.7 = 144.3 -->
+  <rect x="635" y="144.3" width="55" height="205.7" rx="6" fill="url(#barGrad)" filter="url(#shadow)"/>
+  <text x="662.5" y="136.3" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="600" fill="#38bdf8" text-anchor="middle">$257.13M</text>
+  <text x="662.5" y="372" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="500" fill="#94a3b8" text-anchor="middle">Year 5</text>
+
+  <!-- Trend Line -->
+  <path d="M 137.5 210 L 242.5 198.8 L 347.5 186.7 L 452.5 173.64 L 557.5 159.53 L 662.5 144.3" fill="none" stroke="url(#lineGrad)" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="137.5" cy="210" r="4" fill="#fb7185"/>
+  <circle cx="242.5" cy="198.8" r="4" fill="#fb7185"/>
+  <circle cx="347.5" cy="186.7" r="4" fill="#fb7185"/>
+  <circle cx="452.5" cy="173.64" r="4" fill="#fb7185"/>
+  <circle cx="557.5" cy="159.53" r="4" fill="#fb7185"/>
+  <circle cx="662.5" cy="144.3" r="4" fill="#fb7185"/>
+</svg>

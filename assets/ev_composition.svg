@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="fcffGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="tvGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#7e22ce"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <rect width="800" height="400" rx="16" fill="url(#bgGrad)"/>
+
+  <!-- Title & Subtitle -->
+  <text x="40" y="45" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="20" font-weight="700" fill="#f8fafc">Enterprise Value Composition</text>
+  <text x="40" y="68" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="400" fill="#94a3b8">Proportional Contribution: PV of Explicit Forecast FCFF vs. PV of Terminal Value</text>
+
+  <!-- Total EV Badge -->
+  <g transform="translate(560, 30)">
+    <rect width="200" height="45" rx="8" fill="#334155" opacity="0.6"/>
+    <text x="100" y="20" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11" fill="#94a3b8" text-anchor="middle">TOTAL ENTERPRISE VALUE</text>
+    <text x="100" y="38" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="16" font-weight="700" fill="#38bdf8" text-anchor="middle">$2,483.76M</text>
+  </g>
+
+  <!-- Horizontal Stacked Bar -->
+  <!-- Total width = 680px (from X=60 to X=740). 
+       PV(FCFF) = 787.65M / 2483.76M = 31.71% -> 215.6px
+       PV(TV) = 1696.11M / 2483.76M = 68.29% -> 464.4px
+  -->
+  <g transform="translate(60, 130)" filter="url(#shadow)">
+    <!-- PV FCFF Bar Segment -->
+    <rect x="0" y="0" width="215.6" height="60" rx="10" fill="url(#fcffGrad)"/>
+    <rect x="205" y="0" width="10.6" height="60" fill="url(#fcffGrad)"/> <!-- remove right rounded corner -->
+
+    <!-- PV TV Bar Segment -->
+    <rect x="215.6" y="0" width="464.4" height="60" rx="10" fill="url(#tvGrad)"/>
+    <rect x="215.6" y="0" width="10" height="60" fill="url(#tvGrad)"/> <!-- remove left rounded corner -->
+  </g>
+
+  <!-- Annotations / Callouts -->
+  <!-- PV FCFF Callout -->
+  <g transform="translate(60, 230)">
+    <circle cx="10" cy="10" r="6" fill="#38bdf8"/>
+    <text x="26" y="14" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" font-weight="700" fill="#f8fafc">PV of 5-Year FCFF</text>
+    <text x="26" y="36" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="22" font-weight="800" fill="#38bdf8">$787.65M</text>
+    <text x="26" y="58" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="600" fill="#94a3b8">31.71% of Enterprise Value</text>
+    <text x="26" y="78" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" fill="#64748b">Sum of discounted explicit cash flows (Y1–Y5)</text>
+  </g>
+
+  <!-- PV TV Callout -->
+  <g transform="translate(420, 230)">
+    <circle cx="10" cy="10" r="6" fill="#c084fc"/>
+    <text x="26" y="14" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="15" font-weight="700" fill="#f8fafc">PV of Terminal Value (Gordon Growth)</text>
+    <text x="26" y="36" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="22" font-weight="800" fill="#c084fc">$1,696.11M</text>
+    <text x="26" y="58" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="13" font-weight="600" fill="#94a3b8">68.29% of Enterprise Value</text>
+    <text x="26" y="78" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" fill="#64748b">Perpetual terminal value discounted back 5 years</text>
+  </g>
+
+  <line x1="60" y1="365" x2="740" y2="365" stroke="#334155" stroke-width="1"/>
+</svg>
