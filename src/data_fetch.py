@@ -1,9 +1,30 @@
-"""Data fetch engine — implemented in Step 2. Fetches and normalizes historical financials and market data via yfinance."""
+"""Data fetch engine — implemented in Step 2. Fetches and normalizes historical financials and market data via yfinance.
+
+Known Limitation: Interest Expense Vintage Mismatch
+---------------------------------------------------
+Under certain reporting formats in yfinance (e.g. AAPL), current-year income statement
+columns (col 0) aggregate non-operating items without breaking out interest_expense separately.
+In such cases, fetch_company_financials() falls back to the most recent historical fiscal year
+column where interest_expense is explicitly reported, setting:
+    - interest_expense_fallback_used = True
+    - interest_expense_fiscal_year (e.g. "2023-09-30") != primary_fiscal_year (e.g. "2025-09-30")
+
+Consequence:
+    Downstream calls to src/wacc.py:cost_of_debt_after_tax(interest_expense, total_debt, tax_rate)
+    compute (interest_expense / total_debt). If interest_expense is drawn from a prior fiscal year
+    while total_debt is drawn from the current fiscal year, the resulting ratio blends a prior-year
+    numerator with a current-year denominator.
+
+Step 3 Orchestration Guidance:
+    Step 3 must inspect interest_expense_fiscal_year vs primary_fiscal_year before calling
+    wacc:cost_of_debt_after_tax(). If a vintage gap exists, Step 3 should log a warning
+    and allow an overridable manual cost-of-debt parameter.
+"""
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import math
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 import pandas as pd
 import yfinance as yf
 
@@ -53,10 +74,10 @@ class CompanyFinancials:
         All monetary figures are converted to the market trading currency (info['currency'])
         if financial statement currency (info['financialCurrency']) differs (e.g. INFY.NS statement in USD, traded in INR).
 
-    Column Alignment:
-        ebit, depreciation_amortization, capex, and change_in_nwc are strictly drawn from the primary
-        most recent fiscal year column (col 0). If interest_expense is NaN in col 0 (e.g. AAPL), it falls back
-        to the most recent non-NaN prior column with interest_expense_fallback_used = True.
+    Column Alignment & Vintage Tracking:
+        primary_fiscal_year: Date string of primary column (col 0) used for ebit, D&A, CapEx, NWC (e.g. "2025-09-30").
+        interest_expense_fiscal_year: Date string of column used for interest_expense (e.g. "2023-09-30").
+        interest_expense_fallback_used: True if interest_expense was drawn from a prior fiscal year column due to NaN in col 0.
 
     Attributes:
         ticker: Ticker symbol string (e.g. 'AAPL').
@@ -64,6 +85,8 @@ class CompanyFinancials:
         sector: Sector classification.
         industry: Industry classification.
         currency: Statement currency code (e.g. 'USD', 'INR').
+        primary_fiscal_year: Primary fiscal year date string for core statement items (e.g. '2025-09-30').
+        interest_expense_fiscal_year: Fiscal year date string for interest_expense (e.g. '2023-09-30').
         ebit: Earnings Before Interest and Taxes (most recent fiscal year, in market currency).
         effective_tax_rate: Derived tax rate (tax_provision / pretax_income), or 0.25 fallback.
         depreciation_amortization: D&A non-cash add-back (most recent fiscal year, in market currency).
@@ -86,6 +109,8 @@ class CompanyFinancials:
     sector: str
     industry: str
     currency: str
+    primary_fiscal_year: str
+    interest_expense_fiscal_year: str
     ebit: float
     effective_tax_rate: float
     depreciation_amortization: float
@@ -180,6 +205,50 @@ def _get_row_value(
     return None
 
 
+def _get_row_value_with_col_date(
+    df: pd.DataFrame,
+    row_names: list[str],
+    col_idx: int = 0,
+    search_all_cols: bool = False
+) -> Tuple[Optional[float], Optional[str]]:
+    """Retrieves numeric value and column date string from a DataFrame by candidate row names."""
+    if df is None or df.empty:
+        return None, None
+
+    # Attempt at specified col_idx
+    for name in row_names:
+        if name in df.index:
+            try:
+                if col_idx < len(df.columns):
+                    val = df.loc[name].iloc[col_idx]
+                    if pd.notna(val):
+                        val_float = float(val)
+                        if not math.isnan(val_float) and not math.isinf(val_float):
+                            col_date = str(df.columns[col_idx])[:10]
+                            return val_float, col_date
+            except (IndexError, ValueError, TypeError):
+                continue
+
+    # Fallback to search remaining columns if enabled
+    if search_all_cols and len(df.columns) > 1:
+        for col in range(len(df.columns)):
+            if col == col_idx:
+                continue
+            for name in row_names:
+                if name in df.index:
+                    try:
+                        val = df.loc[name].iloc[col]
+                        if pd.notna(val):
+                            val_float = float(val)
+                            if not math.isnan(val_float) and not math.isinf(val_float):
+                                col_date = str(df.columns[col])[:10]
+                                return val_float, col_date
+                    except (IndexError, ValueError, TypeError):
+                        continue
+
+    return None, None
+
+
 def fetch_company_financials(
     ticker: str,
     ticker_obj: Optional[Any] = None,
@@ -240,6 +309,14 @@ def fetch_company_financials(
         fx_rate = float(fx_rate_override)
     else:
         fx_rate = _get_fx_rate(financial_currency, currency)
+
+    # Primary Fiscal Year Date Identification (col 0)
+    if inc is not None and not inc.empty:
+        primary_fiscal_year = str(inc.columns[0])[:10]
+    elif bs is not None and not bs.empty:
+        primary_fiscal_year = str(bs.columns[0])[:10]
+    else:
+        primary_fiscal_year = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     # Market metadata (already in trading currency)
     current_price = info.get("currentPrice") or info.get("regularMarketPrice")
@@ -305,7 +382,7 @@ def fetch_company_financials(
 
     # Interest Expense extraction: check primary col_idx=0 first
     interest_expense_fallback_used = False
-    interest_exp_col0 = _get_row_value(
+    interest_exp_col0, interest_date_0 = _get_row_value_with_col_date(
         inc,
         ["Interest Expense", "Interest Expense Non Operating", "Net Non Operating Interest Income Expense"],
         col_idx=0,
@@ -314,9 +391,10 @@ def fetch_company_financials(
 
     if interest_exp_col0 is not None:
         interest_expense_val = abs(interest_exp_col0) * fx_rate
+        interest_expense_fiscal_year = interest_date_0 or primary_fiscal_year
     else:
         # Fallback to search remaining columns if col 0 is NaN (e.g. AAPL)
-        interest_exp_prior = _get_row_value(
+        interest_exp_prior, interest_date_prior = _get_row_value_with_col_date(
             inc,
             ["Interest Expense", "Interest Expense Non Operating", "Net Non Operating Interest Income Expense"],
             col_idx=0,
@@ -324,15 +402,18 @@ def fetch_company_financials(
         )
         if interest_exp_prior is not None:
             interest_expense_val = abs(interest_exp_prior) * fx_rate
+            interest_expense_fiscal_year = interest_date_prior or primary_fiscal_year
             interest_expense_fallback_used = True
         elif info.get("interestExpense") is not None and not pd.isna(info.get("interestExpense")):
             interest_expense_val = abs(float(info.get("interestExpense"))) * fx_rate
+            interest_expense_fiscal_year = primary_fiscal_year
             interest_expense_fallback_used = True
         else:
             if total_debt_val > 0.0:
                 raise ValueError(f"Required field 'interest_expense' is missing or NaN for ticker '{clean_ticker}'.")
             else:
                 interest_expense_val = 0.0  # Valid debt-free case
+                interest_expense_fiscal_year = primary_fiscal_year
 
     # Primary Cashflow extraction (col_idx=0 strictly)
     if cf is None or cf.empty:
@@ -380,6 +461,8 @@ def fetch_company_financials(
         sector=sector,
         industry=industry,
         currency=currency,
+        primary_fiscal_year=primary_fiscal_year,
+        interest_expense_fiscal_year=interest_expense_fiscal_year,
         ebit=ebit_val,
         effective_tax_rate=effective_tax_rate,
         depreciation_amortization=da_val,

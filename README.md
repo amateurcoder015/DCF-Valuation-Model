@@ -962,6 +962,7 @@ To verify mathematical accuracy, developers and analysts can hand-validate code 
 4. **Data Provider Variability:** Historical financial data retrieved via `yfinance` may contain reporting format variations or restatements.
 5. **Simplified Cost of Debt:** Uses interest expense over total debt rather than yield-to-maturity on individual corporate bonds.
 6. **Financial Sector Exclusion:** Does not support banking or insurance tickers.
+7. **Known Limitation: Interest Expense Vintage Mismatch:** Under certain reporting formats in `yfinance` (e.g. `AAPL`), current-year income statement columns (`col 0`) aggregate non-operating items without breaking out `interest_expense` separately. In such cases, `fetch_company_financials()` falls back to the most recent historical fiscal year column where `interest_expense` is explicitly reported, setting `interest_expense_fallback_used = True` and populating `interest_expense_fiscal_year` (e.g. `"2023-09-30"`) differently from `primary_fiscal_year` (e.g. `"2025-09-30"`). Downstream callers computing an implied cost of debt ratio ($\text{Interest Expense} / \text{Total Debt}$) must explicitly check `interest_expense_fiscal_year` vs `primary_fiscal_year` before using `interest_expense` in any ratio with a current-year balance sheet figure.
 
 ---
 

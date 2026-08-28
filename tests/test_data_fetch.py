@@ -71,7 +71,7 @@ def test_is_financial_sector_empirical_only():
 
 
 def test_fetch_company_financials_aapl_fixture(mock_aapl_ticker):
-    """Verify parsing and normalization of frozen AAPL fixture data into CompanyFinancials."""
+    """Verify parsing, vintage tracking, and normalization of frozen AAPL fixture data into CompanyFinancials."""
     res = fetch_company_financials("AAPL", ticker_obj=mock_aapl_ticker)
 
     assert isinstance(res, CompanyFinancials)
@@ -79,6 +79,12 @@ def test_fetch_company_financials_aapl_fixture(mock_aapl_ticker):
     assert res.company_name == "Apple Inc."
     assert res.sector == "Technology"
     assert res.currency == "USD"
+
+    # Fiscal Year Vintage Tracking assertions
+    assert res.primary_fiscal_year == "2025-09-30"
+    assert res.interest_expense_fiscal_year == "2023-09-30"
+    assert res.interest_expense_fallback_used is True
+
     assert pytest.approx(res.ebit, abs=1e-2) == 1.33050e11
     assert pytest.approx(res.depreciation_amortization, abs=1e-2) == 1.1698e10
     assert res.capex == 1.2715e10  # Positive outflow normalized from -1.2715e10
@@ -87,7 +93,6 @@ def test_fetch_company_financials_aapl_fixture(mock_aapl_ticker):
 
     # AAPL Interest Expense searched across available columns (found $3.933B in col 2, triggering fallback flag)
     assert pytest.approx(res.interest_expense, abs=1e-2) == 3.933e9
-    assert res.interest_expense_fallback_used is True
 
     # NWC: (147957000000 - 165631000000) - (152987000000 - 176392000000) = 5731000000
     assert pytest.approx(res.change_in_nwc, abs=1e-2) == 5731000000.0
@@ -105,6 +110,11 @@ def test_fetch_company_financials_infy_fixture_scaling(mock_infy_ticker):
     assert res.ticker == "INFY.NS"
     assert res.currency == "INR"
 
+    # Fiscal Year Vintage Tracking assertions (aligned, no fallback)
+    assert res.primary_fiscal_year == "2026-03-31"
+    assert res.interest_expense_fiscal_year == res.primary_fiscal_year
+    assert res.interest_expense_fallback_used is False
+
     # Raw USD EBIT ($4.553B) * 95.368 = ₹434.2095B INR (~₹43,421 Crore INR)
     expected_ebit_inr = 4.553e9 * fx_rate
     assert pytest.approx(res.ebit, abs=1e-2) == expected_ebit_inr
@@ -117,13 +127,23 @@ def test_fetch_company_financials_infy_fixture_scaling(mock_infy_ticker):
     expected_da_inr = 5.52e8 * fx_rate
     assert pytest.approx(res.depreciation_amortization, abs=1e-2) == expected_da_inr
 
-    # INFY.NS has interest expense in col 0
-    assert res.interest_expense_fallback_used is False
-
     # Implied Operating Margin check (EBIT / Revenue = 4.553B / 20.158B = 22.58%)
     raw_rev_usd = float(mock_infy_ticker.income_stmt.loc["Total Revenue"].iloc[0])
     implied_op_margin = (res.ebit / (raw_rev_usd * fx_rate))
     assert pytest.approx(implied_op_margin, abs=1e-4) == 0.22586566
+
+
+def test_aapl_interest_expense_vintage_gap_regression_guard(mock_aapl_ticker):
+    """Regression test asserting vintage gap in years between primary FY and interest expense FY is > 0 for AAPL."""
+    res = fetch_company_financials("AAPL", ticker_obj=mock_aapl_ticker)
+
+    primary_year = int(res.primary_fiscal_year[:4])
+    interest_year = int(res.interest_expense_fiscal_year[:4])
+    vintage_gap_years = primary_year - interest_year
+
+    assert vintage_gap_years == 2
+    assert vintage_gap_years > 0
+    assert res.interest_expense_fallback_used is True
 
 
 def test_missing_interest_expense_with_debt_raises_error(mock_aapl_ticker):
@@ -195,6 +215,8 @@ def test_live_yfinance_integration():
     assert aapl_res.capex > 0
     assert aapl_res.interest_expense > 0  # Resolved: interest_expense is non-zero
     assert aapl_res.interest_expense_fallback_used is True  # Resolved: explicitly flagged prior column fallback for AAPL
+    assert aapl_res.primary_fiscal_year != ""
+    assert aapl_res.interest_expense_fiscal_year != ""
     assert aapl_res.current_price > 0
     assert aapl_res.market_cap > 0
 
@@ -208,6 +230,7 @@ def test_live_yfinance_integration():
     assert infy_res.currency == "INR"
     assert infy_res.ebit > 3.0e11
     assert infy_res.interest_expense_fallback_used is False  # INFY.NS has interest expense in col 0
+    assert infy_res.interest_expense_fiscal_year == infy_res.primary_fiscal_year
     assert infy_res.market_cap > 1.0e12
 
     # Test historical revenue CAGR live
