@@ -978,7 +978,22 @@ Financial institutions (banks, investment firms, insurance companies) are delibe
 
 ---
 
-## 30. Formula Reference Table
+## 30. Current Implemented Scope (v1)
+- `[x]` Step 1: Core Financial Math Engine (`src/wacc.py`, `src/fcff.py`, `src/terminal_value.py`, `src/discounting.py`).
+- `[x]` Step 2: Data Acquisition & Normalization Layer (`src/data_fetch.py` via `yfinance`).
+- `[x]` Step 3: End-to-End DCF Orchestration Engine (`src/dcf_engine.py`).
+- `[x]` Step 4: Single-Page Interactive Streamlit Dashboard (`dashboard/app.py`, `app.py`).
+- `[x]` Defensive validation layer (`src/_validators.py`).
+- `[x]` Full test coverage across 53 unit, fixture, AppTest, and integration tests (`tests/`).
+
+### Planned Future Extensions
+- `[ ]` Multi-Stage Growth (2-Stage / 3-Stage Fade Models).
+- `[ ]` Sensitivity Analysis Grid (WACC $\times$ Terminal Growth matrix).
+- `[ ]` Multi-Ticker Comparison View & CSV Export.
+
+---
+
+## 31. Formula Reference Table
 
 | Concept | Mathematical Formula |
 | :--- | :--- |
