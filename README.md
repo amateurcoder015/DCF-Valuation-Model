@@ -976,57 +976,74 @@ Financial institutions (banks, investment firms, insurance companies) are delibe
 
 *Note: Financial sector issuers require specialized valuation models such as the Dividend Discount Model (DDM) or Residual Income Model.*
 
+## 30. Running the Dashboard (FastAPI Backend + React Frontend)
+
+The presentation layer uses a decoupled two-process architecture:
+1. **Backend API**: FastAPI app exposing Step 3 valuation orchestration.
+2. **Frontend UI**: React + TypeScript + Tailwind CSS SPA powered by Vite.
+
+### Step 1: Start FastAPI Backend Server
+```bash
+# From repository root:
+uvicorn api.main:app --reload --port 8000
+```
+*OpenAPI Interactive Documentation available at `http://127.0.0.1:8000/docs`.*
+
+### Step 2: Start React Frontend Development Server
+```bash
+# From repository root:
+cd frontend
+npm run dev
+```
+*Open browser at `http://localhost:5173`.*
+
 ---
 
-## 30. Current Implemented Scope (v1)
+## 31. Backend API Contract (`POST /api/valuation`)
+
+- **Endpoint**: `POST /api/valuation`
+- **Request Body (JSON)**:
+  ```json
+  {
+    "ticker": "AAPL",
+    "projection_years": 5,
+    "terminal_growth_rate": 0.025,
+    "projection_growth_rate": 0.06,
+    "use_historical_cagr_suggestion": false,
+    "manual_cost_of_debt": null,
+    "risk_free_rate": 0.0425,
+    "equity_risk_premium": 0.055
+  }
+  ```
+- **Response**: Full `DCFValuationResult` payload serialized to JSON, including intermediate values, flags, warnings, and derived sensitivity fields (`wacc_spread_pct`, `is_sensitivity_caution`, `sensitivity_caution_message`, `discounted_tv_share_pct`).
+- **HTTP Status Code Mapping**:
+  - `200 OK`: Successful valuation computation.
+  - `400 Bad Request`: `ValueError` (invalid inputs, missing fields, or `terminal_growth_rate >= WACC`).
+  - `422 Unprocessable Entity`: `UnsupportedSectorError` (financial sector bank/insurer rejection).
+  - `500 Internal Server Error`: Unexpected exception with message details.
+
+---
+
+## 32. Streamlit Replacement Note & Caution Threshold Location
+
+- **Streamlit Replacement**: The original Streamlit implementation (`app.py`, `dashboard/app.py`, `tests/test_dashboard_apptest.py`) has been fully replaced by the FastAPI + React TypeScript stack. `streamlit` was removed from `requirements.txt`.
+- **Presentation Helper Logic**: `src/app_helpers.py` was retained and integrated with `api/main.py` to calculate `wacc_spread_pct`, `is_sensitivity_caution`, `sensitivity_caution_message`, `growth_summary`, and `cost_of_debt_summary`.
+- **Caution Threshold Location**: The $2.00\%$ ($200\text{ bps}$) WACC-to-terminal-growth caution threshold is defined in `src/app_helpers.py:compute_wacc_spread()`, enforced in `api/main.py`, tested in `api/test_main.py` and `tests/test_app_helpers.py`, and verified in frontend Vitest tests (`frontend/src/__tests__/HeadlineCard.test.tsx`).
+
+---
+
+## 33. Current Implemented Scope (v1)
 - `[x]` Step 1: Core Financial Math Engine (`src/wacc.py`, `src/fcff.py`, `src/terminal_value.py`, `src/discounting.py`).
 - `[x]` Step 2: Data Acquisition & Normalization Layer (`src/data_fetch.py` via `yfinance`).
 - `[x]` Step 3: End-to-End DCF Orchestration Engine (`src/dcf_engine.py`).
-- `[x]` Step 4: Single-Page Interactive Streamlit Dashboard (`dashboard/app.py`, `app.py`).
+- `[x]` Step 4 Revised: FastAPI Backend API (`api/main.py`) + React Dashboard (`frontend/`).
 - `[x]` Defensive validation layer (`src/_validators.py`).
-- `[x]` Full test coverage across 53 unit, fixture, AppTest, and integration tests (`tests/`).
+- `[x]` Full test coverage across 61 unit, fixture, API, and frontend Vitest tests (`tests/`, `api/`, `frontend/`).
 
 ### Planned Future Extensions
 - `[ ]` Multi-Stage Growth (2-Stage / 3-Stage Fade Models).
 - `[ ]` Sensitivity Analysis Grid (WACC $\times$ Terminal Growth matrix).
 - `[ ]` Multi-Ticker Comparison View & CSV Export.
-
----
-
-## 31. Formula Reference Table
-
-| Concept | Mathematical Formula |
-| :--- | :--- |
-| **Revenue Growth** | $(\text{Revenue}_t - \text{Revenue}_{t-1}) / \text{Revenue}_{t-1}$ |
-| **CAGR** | $(\text{End} / \text{Begin})^{(1/n)} - 1$ |
-| **NOPAT** | $\text{EBIT} \times (1 - \text{Tax Rate})$ |
-| **FCFF** | $\text{EBIT} \times (1 - \text{Tax Rate}) + \text{D\&A} - \text{CapEx} - \Delta\text{NWC}$ |
-| **Cost of Equity (CAPM)** | $R_f + \beta \times \text{ERP}$ |
-| **After-Tax Cost of Debt** | $(\text{Interest Expense} / \text{Total Debt}) \times (1 - \text{Tax Rate})$ |
-| **WACC** | $(E / (E + D)) \times K_e + (D / (E + D)) \times K_d$ |
-| **FCFF Projection** | $\text{FCFF}_t = \text{FCFF}_{t-1} \times (1 + g)^t$ |
-| **Discount Factor** | $1 / (1 + \text{WACC})^t$ |
-| **Terminal Value (Gordon Growth)** | $[\text{FCFF}_N \times (1 + g_{\text{terminal}})] / (\text{WACC} - g_{\text{terminal}})$ |
-| **Enterprise Value (EV)** | $\sum [\text{FCFF}_t / (1 + \text{WACC})^t] + [\text{TV}_N / (1 + \text{WACC})^N]$ |
-| **Equity Value** | $\text{Enterprise Value} - \text{Total Debt} + \text{Cash \& Cash Equivalents}$ |
-| **Intrinsic Share Price** | $\text{Equity Value} / \text{Diluted Shares Outstanding}$ |
-| **Margin of Safety** | $[(\text{Intrinsic Price} - \text{Market Price}) / \text{Market Price}] \times 100$ |
-
----
-
-## 31. Project Roadmap
-
-### Current Implemented Scope (v1)
-- `[x]` Step 1: Core Financial Math Engine (`src/wacc.py`, `src/fcff.py`, `src/terminal_value.py`, `src/discounting.py`).
-- `[x]` 100% test coverage across 24 unit and integration test vectors (`tests/`).
-- `[x]` Defensive validation layer (`src/_validators.py`).
-
-### Planned Future Extensions
-- `[ ]` Step 2: Data Acquisition & Normalization Layer (`src/data_fetch.py` via `yfinance`).
-- `[ ]` Step 3: End-to-End DCF Orchestration Engine (`src/dcf_engine.py`).
-- `[ ]` Step 4: Single-Page Interactive Streamlit Dashboard (`dashboard/app.py`).
-- `[ ]` Multi-Stage Growth (2-Stage / 3-Stage Fade Models).
-- `[ ]` Sensitivity Analysis Grid (WACC $\times$ Terminal Growth matrix).
 
 ---
 

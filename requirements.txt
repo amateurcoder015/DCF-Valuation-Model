@@ -1,5 +1,7 @@
 numpy
 pandas
 yfinance
-streamlit
+fastapi
+uvicorn
+httpx
 pytest
