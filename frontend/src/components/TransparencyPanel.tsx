@@ -1,12 +1,11 @@
-import React from 'react';
-import { ValuationResponse } from '../types/valuation';
+import type { ValuationResponse } from '../types/valuation';
 import { ShieldAlert, CheckCircle2, Info, AlertOctagon, Globe } from 'lucide-react';
 
 interface TransparencyPanelProps {
   result: ValuationResponse;
 }
 
-export const TransparencyPanel: React.FC<TransparencyPanelProps> = ({ result }) => {
+export const TransparencyPanel = ({ result }: TransparencyPanelProps) => {
   return (
     <div className="bg-slate-900 rounded-xl border border-slate-800 p-6 shadow-lg mb-6">
       <div className="flex items-center space-x-2 pb-3 mb-4 border-b border-slate-800">

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ValuationRequest, ValuationResponse } from './types/valuation';
+import { useState } from 'react';
+import type { ValuationRequest, ValuationResponse } from './types/valuation';
 import { fetchValuation } from './api/valuation';
 import { Navbar } from './components/Navbar';
 import { InputPanel } from './components/InputPanel';

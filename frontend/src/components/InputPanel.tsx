@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { ValuationRequest } from '../types/valuation';
-import { Play, Settings, Info } from 'lucide-react';
+import type { ValuationRequest } from '../types/valuation';
+import { Play, Settings } from 'lucide-react';
 
 interface InputPanelProps {
   onRunValuation: (request: ValuationRequest) => void;
   isLoading: boolean;
 }
 
-export const InputPanel: React.FC<InputPanelProps> = ({ onRunValuation, isLoading }) => {
+export const InputPanel = ({ onRunValuation, isLoading }: InputPanelProps) => {
   const [ticker, setTicker] = useState('AAPL');
   const [projectionYears, setProjectionYears] = useState(5);
   const [terminalGrowthPct, setTerminalGrowthPct] = useState(2.5);

@@ -1,13 +1,12 @@
-import React from 'react';
-import { ValuationResponse } from '../types/valuation';
+import type { ValuationResponse } from '../types/valuation';
 import { getCurrencySymbol } from '../utils/formatters';
-import { AlertTriangle, TrendingUp, TrendingDown, Layers, Scale } from 'lucide-react';
+import { AlertTriangle, TrendingUp, TrendingDown, Scale } from 'lucide-react';
 
 interface HeadlineCardProps {
   result: ValuationResponse;
 }
 
-export const HeadlineCard: React.FC<HeadlineCardProps> = ({ result }) => {
+export const HeadlineCard = ({ result }: HeadlineCardProps) => {
   const sym = getCurrencySymbol(result.currency);
   const isUndervalued = result.implied_upside_pct >= 0;
 

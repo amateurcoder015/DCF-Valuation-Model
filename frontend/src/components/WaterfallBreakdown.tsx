@@ -1,14 +1,13 @@
-import React from 'react';
-import { ValuationResponse } from '../types/valuation';
+import type { ValuationResponse } from '../types/valuation';
 import { formatCurrency, getCurrencySymbol } from '../utils/formatters';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { PieChart, DollarSign, Cpu } from 'lucide-react';
+import { PieChart, Cpu } from 'lucide-react';
 
 interface WaterfallBreakdownProps {
   result: ValuationResponse;
 }
 
-export const WaterfallBreakdown: React.FC<WaterfallBreakdownProps> = ({ result }) => {
+export const WaterfallBreakdown = ({ result }: WaterfallBreakdownProps) => {
   const sym = getCurrencySymbol(result.currency);
 
   const fcffChartData = result.projected_fcffs.map((val, idx) => ({
